@@ -18,7 +18,7 @@ public class Trade {
     @Min(value = 1)
     @ApiModelProperty(notes = "Unique id of Trade")
     private Long id;
-
+// funny comment.jpeg
     @ApiModelProperty(notes = "Unique id of requester")
     @Min(value = 1)
     private String requesterId;
