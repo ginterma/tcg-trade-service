@@ -1,8 +1,6 @@
 package com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO;
 
-import io.swagger.annotations.ApiModelProperty;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class RequestedUserCardDAO {
+public class RequestedUserCardsDAO {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,5 +25,5 @@ public class RequestedUserCardDAO {
     private String requestedCardId;
 
     @Column(name = "amount")
-    private int amount;
+    private Integer amount;
 }

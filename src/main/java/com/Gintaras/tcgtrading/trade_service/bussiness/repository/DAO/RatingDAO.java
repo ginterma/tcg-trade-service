@@ -29,5 +29,8 @@ public class RatingDAO {
     @Column(name = "rating")
     private Integer rating;
 
+
+    public RatingDAO(Long ratingId) {
+    }
 }
 

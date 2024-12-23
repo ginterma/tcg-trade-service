@@ -21,9 +21,9 @@ public class OfferedUserCards {
     private Long tradeId;
 
     @ApiModelProperty(notes = "Unique id of offered Card")
-    private Long offeredCardId;
+    private String offeredCardId;
 
     @Min(value = 1)
     @ApiModelProperty(notes = "Amount of the card offered")
-    private int amount;
+    private Integer amount;
 }

@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
 import java.util.Date;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -18,7 +19,6 @@ public class Trade {
     @Min(value = 1)
     @ApiModelProperty(notes = "Unique id of Trade")
     private Long id;
-// funny comment.jpeg
     @ApiModelProperty(notes = "Unique id of requester")
     @Min(value = 1)
     private String requesterId;
@@ -42,4 +42,7 @@ public class Trade {
 
     @ApiModelProperty(notes = "Value of card that are requested")
     private Double requestedCardsValue;
+
+    @ApiModelProperty(notes = "List of all the ratings of the Trade")
+    private List<Long> ratingList;
 }
