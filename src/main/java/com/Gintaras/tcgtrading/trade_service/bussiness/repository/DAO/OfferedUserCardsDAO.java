@@ -1,9 +1,7 @@
 package com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name="Offered_User_Card")
@@ -19,6 +17,8 @@ public class OfferedUserCardsDAO {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trade_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private TradeDAO tradeDAO;
 
     @Column(name = "offered_card_id")
@@ -26,4 +26,7 @@ public class OfferedUserCardsDAO {
 
     @Column(name = "amount")
     private Integer amount;
+
+    public OfferedUserCardsDAO(Long cardId) {
+    }
 }

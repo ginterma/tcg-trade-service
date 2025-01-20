@@ -1,18 +1,19 @@
 package com.Gintaras.tcgtrading.trade_service.bussiness.service;
 
 import com.Gintaras.tcgtrading.trade_service.model.Rating;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface RatingService {
 
+    public ResponseEntity<Rating> saveRating(Rating rating);
 
-    public Rating saveRating(Rating rating);
+    public ResponseEntity<Rating> getRatingById(Long id);
 
-    public Optional<Rating> getRatingById(Long Id);
+    public ResponseEntity<List<Rating>> getRatingList();
 
-    public List<Rating> getRatingList();
+    public ResponseEntity<Void> deleteRatingById(Long id);
 
-    public void deleteRatingById(Long id);
+    public ResponseEntity<Double> getAverageUserRating(String userId);
 }

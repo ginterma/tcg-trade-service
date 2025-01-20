@@ -3,52 +3,120 @@ package com.Gintaras.tcgtrading.trade_service.bussiness.service.impl;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.RequestedUserCardsDAO;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.RequestedCardRepository;
 import com.Gintaras.tcgtrading.trade_service.bussiness.service.RequestedUserCardsService;
+import com.Gintaras.tcgtrading.trade_service.bussiness.service.TradeService;
 import com.Gintaras.tcgtrading.trade_service.mapper.RequestedUserCardsMapStruct;
 import com.Gintaras.tcgtrading.trade_service.model.RequestedUserCards;
-import lombok.extern.log4j.Log4j2;
+import com.Gintaras.tcgtrading.trade_service.model.Trade;
+import com.Gintaras.tcgtrading.trade_service.model.TradeStatus;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@Log4j2
 public class RequestedUserCardsServiceImpl implements RequestedUserCardsService {
 
     @Autowired
-    RequestedCardRepository requestedCardRepository;
+    private RequestedCardRepository requestedCardRepository;
 
     @Autowired
-    RequestedUserCardsMapStruct requestedCardsMapper;
+    private RequestedUserCardsMapStruct requestedCardsMapper;
+
+    @Autowired
+    private TradeService tradeService;
+
+    private final RestClient restClient;
+
+    public RequestedUserCardsServiceImpl() {
+        this.restClient = RestClient.builder()
+                .baseUrl("http://localhost:8082/api/v1/user/card").build();
+    }
 
     @Override
-    public RequestedUserCards saveRequestedCards(RequestedUserCards requestedUserCards){
+    public ResponseEntity<RequestedUserCards> saveRequestedCards(RequestedUserCards requestedUserCards) {
+        // Call to TradeService
+        ResponseEntity<Trade> tradeResponse = tradeService.getTradeById(requestedUserCards.getTradeId());
+        if (!tradeResponse.getStatusCode().is2xxSuccessful() || tradeResponse.getBody() == null) {
+            return ResponseEntity.status(404).body(null);
+        }
+
+        Optional<?> requestedCardExist;
+        try {
+            requestedCardExist = restClient.get().uri("/{id}", requestedUserCards.getRequestedCardId())
+                    .retrieve().body(Optional.class);
+        } catch (RestClientResponseException e) {
+            return ResponseEntity.status(404).body(null);
+        }
+
+        if (requestedCardExist.isEmpty()) {
+            return ResponseEntity.status(404).body(null);
+        }
+
+        if (tradeResponse.getBody().getTradeStatus() == TradeStatus.COMPLETED || tradeResponse.getBody().getTradeStatus() == TradeStatus.CANCELED) {
+            return ResponseEntity.status(400).body(null);
+        }
+
         RequestedUserCardsDAO requestedUserCardsDAO = requestedCardRepository.save(requestedCardsMapper
                 .RequestedCardsToRequestedCardsDAO(requestedUserCards));
-        log.info("New Requested User Cards are saved: {}", requestedUserCards);
-        return requestedCardsMapper.RequestedUserCardsDAOToRequestedUserCards(requestedUserCardsDAO);
-    }
-    @Override
-    public void deleteRequestedCardsById(Long id){
-        requestedCardRepository.deleteById(id);
-        log.info("Requested User Cards with id {} have been deleted", id);
+
+        Double offeredValue;
+        try {
+            offeredValue = restClient.get().uri("/value/{id}", requestedUserCards.getRequestedCardId())
+                    .retrieve().body(Double.class);
+        } catch (RestClientResponseException e) {
+            return ResponseEntity.status(500).body(null);
+        }
+
+        offeredValue = offeredValue * requestedUserCards.getAmount();
+        tradeResponse.getBody().setRequestedCardsValue(tradeResponse.getBody().getRequestedCardsValue() + offeredValue);
+        ResponseEntity<Trade> updatedTradeResponse = tradeService.updateTrade(tradeResponse.getBody().getId(), tradeResponse.getBody());
+
+        if (!updatedTradeResponse.getStatusCode().is2xxSuccessful()) {
+            return ResponseEntity.status(500).body(null);
+        }
+
+        return ResponseEntity.status(201).body(requestedCardsMapper.RequestedUserCardsDAOToRequestedUserCards(requestedUserCardsDAO));
     }
 
     @Override
-    public Optional<RequestedUserCards> getRequestedCardsById(Long id){
+    public ResponseEntity<Void> deleteRequestedCardsById(Long id) {
+        ResponseEntity<RequestedUserCards> requestedUserCardsResponse = getRequestedCardsById(id);
+        if (!requestedUserCardsResponse.getStatusCode().is2xxSuccessful() || requestedUserCardsResponse.getBody() == null) {
+            return ResponseEntity.status(404).build();
+        }
+
+        requestedCardRepository.deleteById(id);
+        return ResponseEntity.status(204).build();
+    }
+
+    @Override
+    public ResponseEntity<RequestedUserCards> getRequestedCardsById(Long id) {
         Optional<RequestedUserCards> requestedUserCards = requestedCardRepository.findById(id)
                 .map(requestedCardsMapper::RequestedUserCardsDAOToRequestedUserCards);
-        log.info("Requested User Cards with id {} are {}", id, requestedUserCards.isPresent() ? requestedUserCards.get() : "not found");
-        return requestedUserCards;
+
+        if (requestedUserCards.isEmpty()) {
+            return ResponseEntity.status(404).body(null);
+        }
+
+        return ResponseEntity.ok(requestedUserCards.get());
     }
 
     @Override
-    public List<RequestedUserCards> getRequestedCards (){
+    public ResponseEntity<List<RequestedUserCards>> getRequestedCards() {
         List<RequestedUserCardsDAO> requestedCardList = requestedCardRepository.findAll();
-        log.info("Get Requested cards list. Size is: {}", requestedCardList::size);
-        return requestedCardList.stream().map(requestedCardsMapper::RequestedUserCardsDAOToRequestedUserCards).collect(Collectors.toList());
+        if (requestedCardList.isEmpty()) {
+            return ResponseEntity.status(404).body(null);
+        }
 
+        List<RequestedUserCards> responseList = requestedCardList.stream()
+                .map(requestedCardsMapper::RequestedUserCardsDAOToRequestedUserCards)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responseList);
     }
 }

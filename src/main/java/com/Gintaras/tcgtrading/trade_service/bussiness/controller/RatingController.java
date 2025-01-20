@@ -19,10 +19,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
 @RestController
 @Log4j2
 @RequestMapping("/api/v1/rating")
-public class RattingController {
+public class RatingController {
 
     @Autowired
     RatingService ratingService;
@@ -37,15 +38,14 @@ public class RattingController {
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
             @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(HttpStatus.ACCEPTED)
-    ResponseEntity<?> saveRating(@ApiParam(value = "Rating model that we want to save", required = true)
-                                @Valid @RequestBody Rating rating, BindingResult bindingResult) {
+    public ResponseEntity<?> saveRating(@ApiParam(value = "Rating model that we want to save", required = true)
+                                        @Valid @RequestBody Rating rating, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             log.warn(HTMLResponseMessages.HTTP_400);
             return ResponseEntity.badRequest().body(HTMLResponseMessages.HTTP_400);
         }
-        Rating savedRating = ratingService.saveRating(rating);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedRating);
-
+        ResponseEntity<Rating> savedRatingResponse = ratingService.saveRating(rating);
+        return savedRatingResponse;
     }
 
     @PutMapping("/{id}")
@@ -58,27 +58,25 @@ public class RattingController {
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
             @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(HttpStatus.ACCEPTED)
-    ResponseEntity<?> updateRating(@ApiParam(value = "The id of the Rating", required = true)
-                                  @PathVariable @NonNull Long id,
-                                  @ApiParam(value = "The updating Rating model", required = true)
-                                  @Valid @RequestBody Rating rating, BindingResult bindingResult) {
+    public ResponseEntity<?> updateRating(@ApiParam(value = "The id of the Rating", required = true)
+                                          @PathVariable @NonNull Long id,
+                                          @ApiParam(value = "The updating Rating model", required = true)
+                                          @Valid @RequestBody Rating rating, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             log.warn(HTMLResponseMessages.HTTP_400);
             return ResponseEntity.badRequest().body(HTMLResponseMessages.HTTP_400);
         }
         if (!Objects.equals(rating.getId(), id)) {
             log.warn("Provided Rating ids are not equal: {}!={}", id, rating.getId());
-            return ResponseEntity.badRequest().body("Unsuccessful request responds with this code." +
-                    "Passed data has errors - provided Rating ids are not equal.");
+            return ResponseEntity.badRequest().body("Unsuccessful request: provided Rating ids are not equal.");
         }
-        Optional<Rating> ratingById = ratingService.getRatingById(id);
-        if (ratingById.isEmpty()) {
+        ResponseEntity<Rating> ratingByIdResponse = ratingService.getRatingById(id);
+        if (ratingByIdResponse.getStatusCode() == HttpStatus.NOT_FOUND) {
             log.info("Rating with id {} does not exist", id);
-            return ResponseEntity.notFound().build();
+            return ratingByIdResponse;
         }
-        Rating updatedRating = ratingService.saveRating(rating);
-        log.info("Rating with id {} is updated: {}", id, updatedRating);
-        return ResponseEntity.status(HttpStatus.OK).body(updatedRating);
+        ResponseEntity<Rating> updatedRatingResponse = ratingService.saveRating(rating);
+        return updatedRatingResponse;
     }
 
     @DeleteMapping("/{id}")
@@ -91,59 +89,57 @@ public class RattingController {
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
             @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    ResponseEntity<?> deleteRatingById(@ApiParam(value = "The id of the Rating", required = true)
-                                      @PathVariable @NonNull Long id) {
-        Optional<Rating> ratingById = ratingService.getRatingById(id);
-        if (ratingById.isEmpty()) {
+    public ResponseEntity<?> deleteRatingById(@ApiParam(value = "The id of the Rating", required = true)
+                                              @PathVariable @NonNull Long id) {
+        ResponseEntity<Rating> ratingByIdResponse = ratingService.getRatingById(id);
+        if (ratingByIdResponse.getStatusCode() == HttpStatus.NOT_FOUND) {
             log.warn("Rating for delete with id {} is not found.", id);
-            return ResponseEntity.notFound().build();
+            return ratingByIdResponse;
         }
-        ratingService.deleteRatingById(id);
-        log.info("Rating with id {} is deleted: {}", id, ratingById);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-
+        ResponseEntity<Void> deleteResponse = ratingService.deleteRatingById(id);
+        return deleteResponse;
     }
 
-    @ApiOperation(
-            value = "Get a list of all Ratings",
-            response = Rating.class)
+    @ApiOperation(value = "Get a list of all Ratings", response = Rating.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = HTMLResponseMessages.HTTP_200),
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
-            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)
-    })
+            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(value = HttpStatus.OK)
     @GetMapping(produces = "application/json")
     public ResponseEntity<List<Rating>> getAllRatings() {
-        List<Rating> foundRatings = ratingService.getRatingList();
-        if (foundRatings.isEmpty()) {
-            log.warn("Rating list is empty: {}", foundRatings);
-            return ResponseEntity.notFound().build();
-        } else {
-            log.info("Rating list is: {}", foundRatings::size);
-            return new ResponseEntity<>(foundRatings, HttpStatus.OK);
-        }
+        ResponseEntity<List<Rating>> ratingsResponse = ratingService.getRatingList();
+        return ratingsResponse;
     }
 
-    @ApiOperation(
-            value = "Get Rating object from database by Id",
-            response = Rating.class)
+    @ApiOperation(value = "Get Rating object from database by Id", response = Rating.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = HTMLResponseMessages.HTTP_200),
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
-            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)
-    })
+            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(value = HttpStatus.OK)
     @GetMapping(produces = "application/json", path = "/{id}")
     public ResponseEntity<?> getRatingById(@ApiParam(value = "The id of the Rating", required = true)
-                                          @PathVariable Long id) {
-        Optional<Rating> ratingById = ratingService.getRatingById(id);
-        if (ratingById.isEmpty()) {
+                                           @PathVariable Long id) {
+        ResponseEntity<Rating> ratingByIdResponse = ratingService.getRatingById(id);
+        if (ratingByIdResponse.getStatusCode() == HttpStatus.NOT_FOUND) {
             log.info("Rating with id {} does not exist", id);
-            return ResponseEntity.notFound().build();
-        } else {
-            log.info("Rating with id {} is found: {}", id, ratingById);
-            return ResponseEntity.ok(ratingById);
+            return ratingByIdResponse; // Return ResponseEntity from getRatingById
         }
+        log.info("Rating with id {} is found: {}", id, ratingByIdResponse.getBody());
+        return ratingByIdResponse;
+    }
+
+    @ApiOperation(value = "Get Average rating of user", response = Double.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = HTMLResponseMessages.HTTP_200),
+            @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
+            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
+    @ResponseStatus(value = HttpStatus.OK)
+    @GetMapping(produces = "application/json", path = "/average/{id}")
+    public ResponseEntity<?> getAverageRatingById(@ApiParam(value = "The id of the User", required = true)
+                                                  @PathVariable String id) {
+        ResponseEntity<Double> averageRatingResponse = ratingService.getAverageUserRating(id);
+        return averageRatingResponse;
     }
 }

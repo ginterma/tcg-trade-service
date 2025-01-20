@@ -2,11 +2,13 @@ package com.Gintaras.tcgtrading.trade_service.bussiness.service.impl;
 
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.RatingDAO;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.RatingRepository;
+import com.Gintaras.tcgtrading.trade_service.bussiness.repository.TradeRepository;
 import com.Gintaras.tcgtrading.trade_service.bussiness.service.RatingService;
 import com.Gintaras.tcgtrading.trade_service.mapper.RatingMapStruct;
 import com.Gintaras.tcgtrading.trade_service.model.Rating;
-import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,37 +16,67 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@Log4j2
 public class RatingServiceImpl implements RatingService {
 
     @Autowired
     RatingRepository ratingRepository;
+
     @Autowired
-    RatingMapStruct rattingMapper;
+    RatingMapStruct ratingMapper;
+
+    @Autowired
+    TradeRepository tradeRepository;
+
     @Override
-    public Rating saveRating(Rating rating){
-        RatingDAO ratingDao = ratingRepository.save(rattingMapper.RatingToRatingDAO(rating));
-        log.info("New Rating is saved: {}", rating);
-        return rattingMapper.RatingDAOToRating(ratingDao);
+    public ResponseEntity<Rating> saveRating(Rating rating) {
+        if (tradeRepository.findById(rating.getTradeId()).isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        RatingDAO ratingDao = ratingRepository.save(ratingMapper.RatingToRatingDAO(rating));
+        Rating savedRating = ratingMapper.RatingDAOToRating(ratingDao);
+        return new ResponseEntity<>(savedRating, HttpStatus.CREATED);
     }
+
     @Override
-    public void deleteRatingById(Long id){
+    public ResponseEntity<Void> deleteRatingById(Long id) {
+        Optional<RatingDAO> ratingDAO = ratingRepository.findById(id);
+        if (ratingDAO.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
         ratingRepository.deleteById(id);
-        log.info("Rating with id {} has been deleted", id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
     @Override
-    public Optional<Rating> getRatingById(Long id){
-        Optional<Rating> rating = ratingRepository.findById(id).map(rattingMapper::RatingDAOToRating);
-        log.info("Rating with id {} is {}", id, rating.isPresent() ? rating.get() : "not found");
-        return rating;
+    public ResponseEntity<Rating> getRatingById(Long id) {
+        Optional<Rating> rating = ratingRepository.findById(id).map(ratingMapper::RatingDAOToRating);
+        if (rating.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        return new ResponseEntity<>(rating.get(), HttpStatus.OK);
     }
 
     @Override
-    public List<Rating> getRatingList (){
+    public ResponseEntity<List<Rating>> getRatingList() {
         List<RatingDAO> ratingList = ratingRepository.findAll();
-        log.info("Get Rating list. Size is: {}", ratingList::size);
-        return ratingList.stream().map(rattingMapper::RatingDAOToRating).collect(Collectors.toList());
+        if (ratingList.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
+        List<Rating> ratings = ratingList.stream().map(ratingMapper::RatingDAOToRating).collect(Collectors.toList());
+        return new ResponseEntity<>(ratings, HttpStatus.OK);
+    }
 
+    @Override
+    public ResponseEntity<Double> getAverageUserRating(String userId) {
+        List<RatingDAO> ratingList = ratingRepository.selectByUserId(userId);
+        if (ratingList.isEmpty()) {
+            return new ResponseEntity<>(0.0, HttpStatus.OK);
+        }
+        double avgRating = 0;
+        for (RatingDAO ratingDAO : ratingList) {
+            avgRating += ratingDAO.getRating();
+        }
+        double average = avgRating / ratingList.size();
+        return new ResponseEntity<>(average, HttpStatus.OK);
     }
 }

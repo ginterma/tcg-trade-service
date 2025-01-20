@@ -21,7 +21,6 @@ public class Rating {
     private Long tradeId;
 
     @ApiModelProperty(notes = "Unique id of the User that is being rated")
-    @Min(value = 1)
     private String userId;
 
     @ApiModelProperty(notes = "Rating of the user's trade 1-10")

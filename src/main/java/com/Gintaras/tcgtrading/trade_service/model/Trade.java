@@ -20,11 +20,9 @@ public class Trade {
     @ApiModelProperty(notes = "Unique id of Trade")
     private Long id;
     @ApiModelProperty(notes = "Unique id of requester")
-    @Min(value = 1)
     private String requesterId;
 
     @ApiModelProperty(notes = "Unique id of offeree")
-    @Min(value = 1)
     @NotNull
     private String offereeId;
 
@@ -35,7 +33,8 @@ public class Trade {
     private Date tradeCompletionDate;
 
     @ApiModelProperty(notes = "Status of the trade")
-    private String tradeStatus;
+    private TradeStatus tradeStatus;
+
 
     @ApiModelProperty(notes = "Values of cards that are offered")
     private Double offeredCardsValue;
@@ -45,4 +44,12 @@ public class Trade {
 
     @ApiModelProperty(notes = "List of all the ratings of the Trade")
     private List<Long> ratingList;
+
+    @ApiModelProperty(notes = "List of all the offered cards of the Trade")
+    private List<Long> offeredCardList;
+
+    @ApiModelProperty(notes = "List of all the requested cards of the Trade")
+    private List<Long> requestedCardList;
+
+
 }

@@ -38,14 +38,16 @@ public class TradeController {
             @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(HttpStatus.ACCEPTED)
     ResponseEntity<?> saveTrade(@ApiParam(value = "Trade model that we want to save", required = true)
-                               @Valid @RequestBody Trade trade, BindingResult bindingResult) {
+                                @Valid @RequestBody Trade trade, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             log.warn(HTMLResponseMessages.HTTP_400);
             return ResponseEntity.badRequest().body(HTMLResponseMessages.HTTP_400);
         }
-        Trade savedTrade = tradeService.saveTrade(trade);
+        Trade savedTrade = tradeService.saveTrade(trade).getBody();
+        if(savedTrade == null){
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(savedTrade);
-
     }
 
     @PutMapping("/{id}")
@@ -59,9 +61,9 @@ public class TradeController {
             @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(HttpStatus.ACCEPTED)
     ResponseEntity<?> updateTrade(@ApiParam(value = "The id of the Trade", required = true)
-                                 @PathVariable @NonNull Long id,
-                                 @ApiParam(value = "The updating Trade model", required = true)
-                                 @Valid @RequestBody Trade trade, BindingResult bindingResult) {
+                                  @PathVariable @NonNull Long id,
+                                  @ApiParam(value = "The updating Trade model", required = true)
+                                  @Valid @RequestBody Trade trade, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             log.warn(HTMLResponseMessages.HTTP_400);
             return ResponseEntity.badRequest().body(HTMLResponseMessages.HTTP_400);
@@ -71,14 +73,12 @@ public class TradeController {
             return ResponseEntity.badRequest().body("Unsuccessful request responds with this code." +
                     "Passed data has errors - provided Trade ids are not equal.");
         }
-        Optional<Trade> tradeById = tradeService.getTradeById(id);
-        if (tradeById.isEmpty()) {
-            log.info("Trade with id {} does not exist", id);
+        ResponseEntity<Trade> updatedTrade = tradeService.updateTrade(id, trade);
+        if(updatedTrade.getStatusCode() == HttpStatus.NOT_FOUND) {
             return ResponseEntity.notFound().build();
         }
-        Trade updatedTrade = tradeService.saveTrade(trade);
-        log.info("Trade with id {} is updated: {}", id, updatedTrade);
-        return ResponseEntity.status(HttpStatus.OK).body(updatedTrade);
+        log.info("Trade with id {} is updated: {}", id, updatedTrade.getBody());
+        return updatedTrade;
     }
 
     @DeleteMapping("/{id}")
@@ -92,58 +92,82 @@ public class TradeController {
             @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     ResponseEntity<?> deleteTradeById(@ApiParam(value = "The id of the trade", required = true)
-                                     @PathVariable @NonNull Long id) {
-        Optional<Trade> tradeById = tradeService.getTradeById(id);
-        if (tradeById.isEmpty()) {
+                                      @PathVariable @NonNull Long id) {
+        ResponseEntity<Trade> tradeById = tradeService.getTradeById(id);
+        if (tradeById.getStatusCode() == HttpStatus.NOT_FOUND) {
             log.warn("Trade for delete with id {} is not found.", id);
             return ResponseEntity.notFound().build();
         }
         tradeService.deleteTradeById(id);
-        log.info("Trade with id {} is deleted: {}", id, tradeById);
+        log.info("Trade with id {} is deleted.", id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-
     }
 
-    @ApiOperation(
-            value = "Get a list of all Trades",
-            response = Trade.class)
+    @ApiOperation(value = "Get a list of all Trades", response = Trade.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = HTMLResponseMessages.HTTP_200),
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
-            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)
-    })
+            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(value = HttpStatus.OK)
     @GetMapping(produces = "application/json")
     public ResponseEntity<List<Trade>> getAllTrades() {
-        List<Trade> foundTrades = tradeService.getTradeList();
-        if (foundTrades.isEmpty()) {
-            log.warn("Trade list is empty: {}", foundTrades);
-            return ResponseEntity.notFound().build();
-        } else {
-            log.info("Trade list is: {}", foundTrades::size);
-            return new ResponseEntity<>(foundTrades, HttpStatus.OK);
+        ResponseEntity<List<Trade>> response = tradeService.getTradeList();
+
+
+        if (response.getStatusCode() == HttpStatus.NO_CONTENT) {
+            log.warn("Trade list is empty.");
+            return response;
         }
+
+        // Log the size of the trade list
+        log.info("Trade list size: {}", response.getBody().size());
+
+        return response;
     }
 
-    @ApiOperation(
-            value = "Get Trade object from database by Id",
-            response = Trade.class)
+
+    @ApiOperation(value = "Get Trade object from database by Id", response = Trade.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = HTMLResponseMessages.HTTP_200),
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
-            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)
-    })
+            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
     @ResponseStatus(value = HttpStatus.OK)
     @GetMapping(produces = "application/json", path = "/{id}")
     public ResponseEntity<?> getTradeById(@ApiParam(value = "The id of the Trade", required = true)
-                                         @PathVariable Long id) {
-        Optional<Trade> tradeById = tradeService.getTradeById(id);
-        if (tradeById.isEmpty()) {
+                                          @PathVariable Long id) {
+        ResponseEntity<Trade> tradeById = tradeService.getTradeById(id);
+        if (tradeById.getStatusCode() == HttpStatus.NOT_FOUND) {
             log.info("Trade with id {} does not exist", id);
             return ResponseEntity.notFound().build();
         } else {
-            log.info("Trade with id {} is found: {}", id, tradeById);
-            return ResponseEntity.ok(tradeById);
+            log.info("Trade with id {} is found: {}", id, tradeById.getBody());
+            return tradeById;
         }
     }
+
+    @PutMapping("complete/{id}")
+    @ApiOperation(value = "Marks trade as completed",
+            notes = "If trade with provided Id exists it is marked as completed if both users have enough cards",
+            response = Trade.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = HTMLResponseMessages.HTTP_200),
+            @ApiResponse(code = 400, message = HTMLResponseMessages.HTTP_400),
+            @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
+            @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    ResponseEntity<Trade> completeTrade(@ApiParam(value = "The id of the Trade", required = true)
+                                        @PathVariable @NonNull Long id) {
+
+        ResponseEntity<Trade> response = tradeService.completeTrade(id);
+
+        if (response.getStatusCode() == HttpStatus.OK) {
+            log.info("Trade with id {} is completed: {}", id, response.getBody());
+        } else {
+            log.warn("Failed to complete trade with id {}: {}", id, response.getStatusCode());
+        }
+
+        return response;
+    }
 }
+
+

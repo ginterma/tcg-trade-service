@@ -1,6 +1,7 @@
 package com.Gintaras.tcgtrading.trade_service.bussiness.service;
 
 import com.Gintaras.tcgtrading.trade_service.model.OfferedUserCards;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Optional;
@@ -8,11 +9,11 @@ import java.util.Optional;
 
 public interface OfferedUserCardsService {
 
-    public OfferedUserCards saveOfferedCards(OfferedUserCards offeredUserCards);
+    ResponseEntity<OfferedUserCards> saveOfferedCards(OfferedUserCards offeredUserCards);
 
-    public Optional<OfferedUserCards> getOfferedCardsById(Long Id);
+    public ResponseEntity<OfferedUserCards> getOfferedCardsById(Long id);
 
-    public List<OfferedUserCards> getOfferedCards();
+    public ResponseEntity<List<OfferedUserCards>> getOfferedCards();
 
-    public void deleteOfferedCardsById(Long id);
+    ResponseEntity<Void> deleteOfferedCardsById(Long id);
 }

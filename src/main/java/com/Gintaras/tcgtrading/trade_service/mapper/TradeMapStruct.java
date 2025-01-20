@@ -2,6 +2,7 @@ package com.Gintaras.tcgtrading.trade_service.mapper;
 
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.OfferedUserCardsDAO;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.RatingDAO;
+import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.RequestedUserCardsDAO;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.TradeDAO;
 import com.Gintaras.tcgtrading.trade_service.model.OfferedUserCards;
 import com.Gintaras.tcgtrading.trade_service.model.Trade;
@@ -19,10 +20,13 @@ public interface TradeMapStruct {
 
 
 
-    TradeDAO TradeToTradeDAO (Trade trade);
+    @Mapping(source = "offeredCardList", target = "offeredCardList", qualifiedByName = "offeredCardIdToDAO")
+    @Mapping(source = "requestedCardList", target = "requestedCardList", qualifiedByName = "requestedCardIdToDAO")
+    TradeDAO TradeToTradeDAO(Trade trade);
 
-
-    Trade TradeDAOToTrade (TradeDAO tradeDAO);
+    @Mapping(source = "offeredCardList", target = "offeredCardList", qualifiedByName = "offeredCardDAOToIds")
+    @Mapping(source = "requestedCardList", target = "requestedCardList", qualifiedByName = "requestedCardDAOToIds")
+    Trade TradeDAOToTrade(TradeDAO tradeDAO);
 
     default List<RatingDAO> ratingIdsToRatingDAOS(List<Long> ratingIds) {
         List<RatingDAO> ratingDAOS = new ArrayList<>();
@@ -42,5 +46,40 @@ public interface TradeMapStruct {
                             ratingIds.add(ratingDAO.getId()));
         }
         return ratingIds;
+    }
+    @Named("offeredCardIdToDAO")
+    default List<OfferedUserCardsDAO> offeredCardIdToDAO(List<Long> cardIds) {
+        List<OfferedUserCardsDAO> cardsDAOS = new ArrayList<>();
+        if (isNotEmpty(cardIds)) {
+            cardIds.forEach(cardId -> cardsDAOS.add(new OfferedUserCardsDAO(cardId)));
+        }
+        return cardsDAOS;
+    }
+
+    @Named("requestedCardIdToDAO")
+    default List<RequestedUserCardsDAO> requestedCardIdToDAO(List<Long> cardIds) {
+        List<RequestedUserCardsDAO> cardsDAOS = new ArrayList<>();
+        if (isNotEmpty(cardIds)) {
+            cardIds.forEach(cardId -> cardsDAOS.add(new RequestedUserCardsDAO(cardId)));
+        }
+        return cardsDAOS;
+    }
+
+    @Named("offeredCardDAOToIds")
+    default List<Long> offeredCardDAOToIds(List<OfferedUserCardsDAO> cardsDAOS) {
+        List<Long> cardIds = new ArrayList<>();
+        if (isNotEmpty(cardsDAOS)) {
+            cardsDAOS.forEach(cardDAO -> cardIds.add(cardDAO.getId()));
+        }
+        return cardIds;
+    }
+
+    @Named("requestedCardDAOToIds")
+    default List<Long> requestedCardDAOToIds(List<RequestedUserCardsDAO> cardsDAOS) {
+        List<Long> cardIds = new ArrayList<>();
+        if (isNotEmpty(cardsDAOS)) {
+            cardsDAOS.forEach(cardDAO -> cardIds.add(cardDAO.getId()));
+        }
+        return cardIds;
     }
 }

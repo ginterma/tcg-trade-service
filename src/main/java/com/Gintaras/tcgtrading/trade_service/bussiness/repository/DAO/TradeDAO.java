@@ -1,10 +1,10 @@
 package com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO;
 
+import com.Gintaras.tcgtrading.trade_service.model.TradeStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.annotations.ApiModelProperty;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Date;
 import java.util.List;
@@ -24,7 +24,7 @@ public class TradeDAO {
     @Column(name = "requester_id")
     private String requesterId;
 
-    @Column(name = "offereeId")
+    @Column(name = "offeree_id")
     private String offereeId;
 
     @Column(name = "trade_creation_date")
@@ -33,8 +33,9 @@ public class TradeDAO {
     @Column(name = "trade_completion_date")
     private Date tradeCompletionDate;
 
+    @Enumerated(EnumType.STRING) // Persist the enum as a String
     @Column(name = "trade_status")
-    private String tradeStatus;
+    private TradeStatus tradeStatus;
 
     @Column(name = "offered_cards_value")
     private Double offeredCardsValue;
@@ -43,5 +44,26 @@ public class TradeDAO {
     private Double requestedCardsValue;
 
     @OneToMany(mappedBy = "tradeDAO", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    private List<OfferedUserCardsDAO> offeredCardList;
+
+    @OneToMany(mappedBy = "tradeDAO", fetch = FetchType.LAZY)
+    @ToString.Exclude
     private List<RatingDAO> ratingList;
+
+    @OneToMany(mappedBy = "tradeDAO", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    private List<RequestedUserCardsDAO> requestedCardList;
+
+    @Override
+    public String toString() {
+        return "TradeDAO{" +
+                "id=" + id +
+                ", requesterId='" + requesterId + '\'' +
+                ", offereeId='" + offereeId + '\'' +
+                ", tradeStatus=" + tradeStatus +
+                ", offeredCardsValue=" + offeredCardsValue +
+                ", requestedCardsValue=" + requestedCardsValue +
+                '}';
+    }
 }
