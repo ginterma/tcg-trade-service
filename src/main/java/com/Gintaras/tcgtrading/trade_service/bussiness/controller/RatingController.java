@@ -37,7 +37,7 @@ public class RatingController {
             @ApiResponse(code = 400, message = HTMLResponseMessages.HTTP_400),
             @ApiResponse(code = 404, message = HTMLResponseMessages.HTTP_404),
             @ApiResponse(code = 500, message = HTMLResponseMessages.HTTP_500)})
-    @ResponseStatus(HttpStatus.ACCEPTED)
+    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<?> saveRating(@ApiParam(value = "Rating model that we want to save", required = true)
                                         @Valid @RequestBody Rating rating, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {

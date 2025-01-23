@@ -85,8 +85,8 @@ public class RequestedUserCardsServiceImpl implements RequestedUserCardsService 
 
     @Override
     public ResponseEntity<Void> deleteRequestedCardsById(Long id) {
-        ResponseEntity<RequestedUserCards> requestedUserCardsResponse = getRequestedCardsById(id);
-        if (!requestedUserCardsResponse.getStatusCode().is2xxSuccessful() || requestedUserCardsResponse.getBody() == null) {
+        Optional<RequestedUserCardsDAO> requestedUserCards = requestedCardRepository.findById(id);
+        if (requestedUserCards.isEmpty()) {
             return ResponseEntity.status(404).build();
         }
 

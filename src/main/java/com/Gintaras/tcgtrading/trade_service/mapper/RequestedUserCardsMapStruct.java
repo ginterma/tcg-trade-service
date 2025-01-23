@@ -1,9 +1,7 @@
 package com.Gintaras.tcgtrading.trade_service.mapper;
 
-import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.OfferedUserCardsDAO;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.RequestedUserCardsDAO;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.TradeDAO;
-import com.Gintaras.tcgtrading.trade_service.model.OfferedUserCards;
 import com.Gintaras.tcgtrading.trade_service.model.RequestedUserCards;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

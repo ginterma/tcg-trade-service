@@ -106,11 +106,6 @@ public class OfferedUserCardsServiceImpl implements OfferedUserCardsService {
     public ResponseEntity<List<OfferedUserCards>> getOfferedCards() {
         List<OfferedUserCardsDAO> offeredCardList = offeredCardsRepository.findAll();
 
-        if (offeredCardList.isEmpty()) {
-            log.warn("No offered user cards found");
-            return ResponseEntity.noContent().build();
-        }
-
         log.info("Retrieved offered cards list. Size: {}", offeredCardList.size());
         List<OfferedUserCards> offeredUserCardsList = offeredCardList.stream()
                 .map(offeredCardsMapper::OfferedUserCardsDAOToOfferedUserCards)

@@ -60,7 +60,8 @@ public class RatingServiceImpl implements RatingService {
     public ResponseEntity<List<Rating>> getRatingList() {
         List<RatingDAO> ratingList = ratingRepository.findAll();
         if (ratingList.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            List<Rating> ratings = ratingList.stream().map(ratingMapper::RatingDAOToRating).collect(Collectors.toList());
+            return new ResponseEntity<>(ratings, HttpStatus.NO_CONTENT);
         }
         List<Rating> ratings = ratingList.stream().map(ratingMapper::RatingDAOToRating).collect(Collectors.toList());
         return new ResponseEntity<>(ratings, HttpStatus.OK);

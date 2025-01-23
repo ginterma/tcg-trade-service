@@ -112,16 +112,7 @@ public class TradeController {
     @GetMapping(produces = "application/json")
     public ResponseEntity<List<Trade>> getAllTrades() {
         ResponseEntity<List<Trade>> response = tradeService.getTradeList();
-
-
-        if (response.getStatusCode() == HttpStatus.NO_CONTENT) {
-            log.warn("Trade list is empty.");
-            return response;
-        }
-
-        // Log the size of the trade list
         log.info("Trade list size: {}", response.getBody().size());
-
         return response;
     }
 
