@@ -1,26 +1,16 @@
 package com.Gintaras.tcgtrading.trade_service.ServiceTest;
 
-import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.OfferedUserCardsDAO;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.RequestedUserCardsDAO;
-import com.Gintaras.tcgtrading.trade_service.bussiness.repository.DAO.TradeDAO;
-import com.Gintaras.tcgtrading.trade_service.bussiness.repository.OfferedCardRepository;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.RequestedCardRepository;
-import com.Gintaras.tcgtrading.trade_service.bussiness.repository.TradeRepository;
-import com.Gintaras.tcgtrading.trade_service.bussiness.service.impl.OfferedUserCardsServiceImpl;
 import com.Gintaras.tcgtrading.trade_service.bussiness.service.impl.RequestedUserCardsServiceImpl;
-import com.Gintaras.tcgtrading.trade_service.mapper.OfferedUserCardsMapStruct;
 import com.Gintaras.tcgtrading.trade_service.mapper.RequestedUserCardsMapStruct;
-import com.Gintaras.tcgtrading.trade_service.model.OfferedUserCards;
 import com.Gintaras.tcgtrading.trade_service.model.RequestedUserCards;
-import com.Gintaras.tcgtrading.trade_service.model.Trade;
-import com.Gintaras.tcgtrading.trade_service.model.TradeStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -31,35 +21,25 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
 @ExtendWith(MockitoExtension.class)
 public class RequestedUserCardsServiceTest {
 
     @Mock
-    private TradeRepository tradeRepository;
-    @Mock
     private RequestedCardRepository cardRepository;
     @Mock
     private RequestedUserCardsMapStruct cardsMapStruct;
-
 
     @InjectMocks
     private RequestedUserCardsServiceImpl cardsService;
 
     private RequestedUserCards cards;
     private RequestedUserCardsDAO cardsDAO;
-    private Trade trade;
-    private TradeDAO tradeDAO;
+
 
     @BeforeEach
     public void setUp() {
         cards = new RequestedUserCards(1L, 1L, "1", 1);
         cardsDAO = new RequestedUserCardsDAO(1L, null, "1", 1);
-        trade = new Trade(1L, "1L", "2L", new Date(), new Date(System.currentTimeMillis() + 1000000),
-                TradeStatus.UNDERGOING, 500.0, 450.0, null, null, null);
-        tradeDAO = new TradeDAO(1L, "1L", "2L", new Date(), new Date(System.currentTimeMillis() + 1000000),
-                TradeStatus.UNDERGOING, 500.0, 450.0, null, null, null);
-
     }
     @Test
     public void deleteRequestedCardsTest_RequestExist(){

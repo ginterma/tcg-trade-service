@@ -5,7 +5,6 @@ import com.Gintaras.tcgtrading.trade_service.bussiness.repository.OfferedCardRep
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.RatingRepository;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.RequestedCardRepository;
 import com.Gintaras.tcgtrading.trade_service.bussiness.repository.TradeRepository;
-import com.Gintaras.tcgtrading.trade_service.bussiness.service.TradeService;
 import com.Gintaras.tcgtrading.trade_service.bussiness.service.impl.TradeServiceImpl;
 import com.Gintaras.tcgtrading.trade_service.mapper.TradeMapStruct;
 import com.Gintaras.tcgtrading.trade_service.model.Trade;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -29,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.times;
 
-@SpringBootTest
 @ExtendWith(MockitoExtension.class)
 public class TradeServiceTest {
 

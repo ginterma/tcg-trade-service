@@ -13,11 +13,13 @@ import com.Gintaras.tcgtrading.trade_service.model.Trade;
 import com.Gintaras.tcgtrading.trade_service.model.TradeStatus;
 import jakarta.transaction.Transactional;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,34 +30,42 @@ import java.util.stream.Collectors;
 public class TradeServiceImpl implements TradeService {
 
 
-    @Autowired
-    TradeRepository tradeRepository;
-    @Autowired
-    OfferedCardRepository offeredCardRepository;
-    @Autowired
-    RequestedCardRepository requestedCardRepository;
-    @Autowired
-    RatingRepository ratingRepository;
-    @Autowired
-    TradeMapStruct tradeMapper;
-    private final RestClient restClient;
-    private final RestClient restClientUserCard;
+    private final TradeRepository tradeRepository;
+    private final OfferedCardRepository offeredCardRepository;
+    private final RequestedCardRepository requestedCardRepository;
+    private final RatingRepository ratingRepository;
+    private final TradeMapStruct tradeMapper;
+    private final WebClient userClient;
+    private final WebClient userCardClient;
 
-    private final String USER_URI = "http://localhost:9098/api/v1/user";
-    private final String CARD_URI = "http://localhost:8082/api/v1/user/card";
 
-    public TradeServiceImpl() {
-        restClient = RestClient.builder().baseUrl(USER_URI).build();
-        restClientUserCard = RestClient.builder().baseUrl(CARD_URI).build();
+    public TradeServiceImpl(TradeRepository tradeRepository, OfferedCardRepository offeredCardRepository, RequestedCardRepository requestedCardRepository, RatingRepository ratingRepository, TradeMapStruct tradeMapper, @Qualifier("user") WebClient userClient,
+                            @Qualifier("usercard") WebClient userCardClient) {
+        this.tradeRepository = tradeRepository;
+        this.offeredCardRepository = offeredCardRepository;
+        this.requestedCardRepository = requestedCardRepository;
+        this.ratingRepository = ratingRepository;
+        this.tradeMapper = tradeMapper;
+        this.userClient = userClient;
+        this.userCardClient = userCardClient;
     }
 
     @Override
     public ResponseEntity<Trade> saveTrade(Trade trade) {
-        Optional<?> offereeExists = restClient.get().uri("/{id}",
-                trade.getOffereeId()).retrieve().body(Optional.class);
-        Optional<?> requesterExists = restClient.get().uri("/{id}",
-                trade.getRequesterId()).retrieve().body(Optional.class);
-        if (offereeExists.isEmpty() || requesterExists.isEmpty()) {
+        HttpStatus offereeStatus = (HttpStatus) userClient.get()
+                .uri("/{id}", trade.getOffereeId())
+                .retrieve()
+                .toBodilessEntity()
+                .map(ResponseEntity::getStatusCode)
+                .block();
+        HttpStatus requesterStatus = (HttpStatus) userClient.get()
+                .uri("/{id}", trade.getRequesterId())
+                .retrieve()
+                .toBodilessEntity()
+                .map(ResponseEntity::getStatusCode)
+                .block();
+
+        if (!offereeStatus.is2xxSuccessful() || !requesterStatus.is2xxSuccessful()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
 
@@ -140,29 +150,30 @@ public class TradeServiceImpl implements TradeService {
         if (existingTradeOptional.isEmpty()) {
             return notFoundResponse();
         }
+
         TradeDAO existingTrade = existingTradeOptional.get();
+        if (!checkIfTradeUndergoing(existingTrade)) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         List<OfferedUserCardsDAO> offeredCardList = existingTrade.getOfferedCardList();
         List<RequestedUserCardsDAO> requestedCardList = existingTrade.getRequestedCardList();
 
         for (OfferedUserCardsDAO offeredUserCardsDAO : offeredCardList) {
             Integer amount = fetchCardAmount(offeredUserCardsDAO.getOfferedCardId());
-            if (!checkIfEnoughCards(offeredUserCardsDAO.getAmount(), amount)) {
+            if (!checkIfEnoughCards(amount, offeredUserCardsDAO.getAmount())) {
                 return badRequestResponse();
             }
 
-            processCards(offeredUserCardsDAO.getAmount(), amount,
-                    offeredUserCardsDAO.getOfferedCardId(), existingTrade.getOffereeId());
+            processCards(amount, offeredUserCardsDAO.getAmount(),
+                    offeredUserCardsDAO.getOfferedCardId(), existingTrade.getOffereeId(),existingTrade.getRequesterId());
         }
         for (RequestedUserCardsDAO requestedUserCardsDAO : requestedCardList) {
             Integer amount = fetchCardAmount(requestedUserCardsDAO.getRequestedCardId());
-            if (!checkIfEnoughCards(requestedUserCardsDAO.getAmount(), amount)) {
+            if (!checkIfEnoughCards(amount, requestedUserCardsDAO.getAmount())) {
                 return badRequestResponse();
             }
-            processCards(requestedUserCardsDAO.getAmount(), amount,
-                    requestedUserCardsDAO.getRequestedCardId(), existingTrade.getRequesterId());
+            processCards(amount, requestedUserCardsDAO.getAmount(),
+                    requestedUserCardsDAO.getRequestedCardId(), existingTrade.getRequesterId(),existingTrade.getOffereeId());
         }
 
-        if (!checkIfTradeUndergoing(existingTrade)) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 
         existingTrade.setTradeStatus(TradeStatus.COMPLETED);
         TradeDAO updatedTradeDAO = tradeRepository.save(existingTrade);
@@ -183,19 +194,47 @@ public class TradeServiceImpl implements TradeService {
     private boolean checkIfTradeUndergoing(TradeDAO trade) {
         return TradeStatus.UNDERGOING.equals(trade.getTradeStatus());
     }
+    @Transactional
+    private void processCards(Integer currentAmount, Integer requestedAmount, String userCardId, String userId1, String userId2) {
+        userCardClient.put()
+                .uri("/amount/{id}", userCardId)
+                .bodyValue(currentAmount - requestedAmount)  // Pass the integer directly
+                .retrieve()
+                .toBodilessEntity()
+                .block();
 
-    private void processCards(Integer currentAmount, Integer requestedAmount, String userCardId, String userId) {
-        String requestBody = String.format("%d", currentAmount - requestedAmount);
-        restClientUserCard.put().uri("/amount/{id}", userCardId).body(requestBody);
-        ResponseEntity<?> getUserCardId = restClientUserCard.get().uri("/unique/{userId}/{cardId}", userId, userCardId).retrieve().body(ResponseEntity.class);
+        String cardId = userCardClient.get()
+                .uri("/card/{id}",userCardId)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        String user2CardId = userCardClient.get()
+                .uri("/unique/{userId}/{cardId}", userId2, cardId)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
         Integer amountAfter = requestedAmount;
-        if (getUserCardId != ResponseEntity.notFound().build()) {
-            Integer amountBefore = restClientUserCard.get().uri("/amount/{id}", userCardId).retrieve().body(Integer.class);
-            amountAfter += amountBefore;
+        if (user2CardId != null) {
+            Integer amountBefore = userCardClient.get()
+                    .uri("/amount/{id}", user2CardId)
+                    .retrieve()
+                    .bodyToMono(Integer.class)
+                    .block();
+            amountAfter = amountAfter + amountBefore;
         }
-        String jsonString = String.format("{\"userId\": \"%s\", \"cardId\": \"%s\", \"amount\": %d}", userId, userCardId, amountAfter);
-        restClientUserCard.post().body(jsonString);
+
+
+        String jsonString = String.format("{\"userId\": \"%s\", \"cardId\": \"%s\", \"amount\": %d}", userId2, cardId, amountAfter);
+        userCardClient.post()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .bodyValue(jsonString)
+                .retrieve()
+                .toBodilessEntity()
+                .block();
     }
+
 
     private ResponseEntity<Trade> notFoundResponse() {
         log.warn("Trade does not exist");
@@ -208,7 +247,16 @@ public class TradeServiceImpl implements TradeService {
     }
 
     private Integer fetchCardAmount(String cardId) {
-        return restClientUserCard.get().uri("/amount/{id}", cardId).retrieve().body(Integer.class);
+        try {
+            return userCardClient.get()
+                    .uri("/amount/{id}", cardId)
+                    .retrieve()
+                    .bodyToMono(Integer.class)
+                    .block();
+        } catch (Exception e) {
+            log.error("Error fetching card amount for cardId: {}", cardId, e);
+            return 0;
+        }
     }
 
 }

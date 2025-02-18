@@ -8,11 +8,11 @@ import com.Gintaras.tcgtrading.trade_service.mapper.RequestedUserCardsMapStruct;
 import com.Gintaras.tcgtrading.trade_service.model.RequestedUserCards;
 import com.Gintaras.tcgtrading.trade_service.model.Trade;
 import com.Gintaras.tcgtrading.trade_service.model.TradeStatus;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,39 +21,38 @@ import java.util.stream.Collectors;
 @Service
 public class RequestedUserCardsServiceImpl implements RequestedUserCardsService {
 
-    @Autowired
-    private RequestedCardRepository requestedCardRepository;
 
-    @Autowired
-    private RequestedUserCardsMapStruct requestedCardsMapper;
+    private final RequestedCardRepository requestedCardRepository;
+    private final RequestedUserCardsMapStruct requestedCardsMapper;
+    private final TradeService tradeService;
+    private final WebClient webUserCardClient;
 
-    @Autowired
-    private TradeService tradeService;
-
-    private final RestClient restClient;
-
-    public RequestedUserCardsServiceImpl() {
-        this.restClient = RestClient.builder()
-                .baseUrl("http://localhost:8082/api/v1/user/card").build();
+    public RequestedUserCardsServiceImpl(RequestedCardRepository requestedCardRepository,
+                                         RequestedUserCardsMapStruct requestedCardsMapper, TradeService tradeService,
+                                         @Qualifier("usercard") WebClient webUserCardClient) {
+        this.requestedCardRepository = requestedCardRepository;
+        this.requestedCardsMapper = requestedCardsMapper;
+        this.tradeService = tradeService;
+        this.webUserCardClient = webUserCardClient;
     }
+
 
     @Override
     public ResponseEntity<RequestedUserCards> saveRequestedCards(RequestedUserCards requestedUserCards) {
-        // Call to TradeService
         ResponseEntity<Trade> tradeResponse = tradeService.getTradeById(requestedUserCards.getTradeId());
         if (!tradeResponse.getStatusCode().is2xxSuccessful() || tradeResponse.getBody() == null) {
             return ResponseEntity.status(404).body(null);
         }
 
-        Optional<?> requestedCardExist;
+        ResponseEntity<Void> requestedCardExist;
         try {
-            requestedCardExist = restClient.get().uri("/{id}", requestedUserCards.getRequestedCardId())
-                    .retrieve().body(Optional.class);
+            requestedCardExist = webUserCardClient.get().uri("/{id}", requestedUserCards.getRequestedCardId())
+                    .retrieve().toBodilessEntity().block();
         } catch (RestClientResponseException e) {
             return ResponseEntity.status(404).body(null);
         }
 
-        if (requestedCardExist.isEmpty()) {
+        if (!requestedCardExist.getStatusCode().is2xxSuccessful()) {
             return ResponseEntity.status(404).body(null);
         }
 
@@ -66,8 +65,8 @@ public class RequestedUserCardsServiceImpl implements RequestedUserCardsService 
 
         Double offeredValue;
         try {
-            offeredValue = restClient.get().uri("/value/{id}", requestedUserCards.getRequestedCardId())
-                    .retrieve().body(Double.class);
+            offeredValue = webUserCardClient.get().uri("/value/{id}", requestedUserCards.getRequestedCardId())
+                    .retrieve().bodyToMono(Double.class).block();
         } catch (RestClientResponseException e) {
             return ResponseEntity.status(500).body(null);
         }

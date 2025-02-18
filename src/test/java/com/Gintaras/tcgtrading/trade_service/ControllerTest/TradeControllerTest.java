@@ -45,17 +45,6 @@ public class TradeControllerTest {
     @MockitoBean
     TradeService tradeService;
 
-    @MockitoBean
-    private TradeRepository tradeRepository;
-    @MockitoBean
-    private OfferedCardRepository offeredCardRepository;
-    @MockitoBean
-    private RequestedCardRepository requestedCardRepository;
-    @MockitoBean
-    private RatingRepository ratingRepository;
-    @MockitoBean
-    private TradeMapStruct tradeMapStruct;
-
     private Trade trade;
     private TradeDAO tradeDAO;
 
@@ -84,20 +73,14 @@ public class TradeControllerTest {
 
     @Test
     public void deleteTradeControllerTest_WhenTradeExist() throws Exception {
-        when(tradeRepository.findById(1L)).thenReturn(Optional.of(tradeDAO));
         when(tradeService.getTradeById(1L)).thenReturn(ResponseEntity.status(HttpStatus.OK).body(trade));
         when(tradeService.deleteTradeById(1L)).thenReturn(ResponseEntity.noContent().build());
-        doNothing().when(offeredCardRepository).deleteByTradeId(1L);
-        doNothing().when(requestedCardRepository).deleteByTradeId(1L);
-        doNothing().when(ratingRepository).deleteByTradeId(1L);
-        doNothing().when(tradeRepository).deleteById(1L);
         ResultActions result = this.mockMvc.perform(MockMvcRequestBuilders
                         .delete(TRADE_URI + "/1"))
                 .andExpect(status().isNoContent());
     }
     @Test
     public void deleteTradeControllerTest_WhenTradeNotExist() throws Exception {
-        when(tradeRepository.findById(1L)).thenReturn(Optional.empty());
         when(tradeService.getTradeById(1L)).thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
         ResultActions result = this.mockMvc.perform(MockMvcRequestBuilders
                         .delete(TRADE_URI + "/1"))
@@ -109,8 +92,6 @@ public class TradeControllerTest {
         tradeDAOList.add(tradeDAO);
         List<Trade> tradeList = new ArrayList<>();
         tradeList.add(trade);
-        when(tradeRepository.findAll()).thenReturn(tradeDAOList);
-        when(tradeMapStruct.TradeDAOToTrade(tradeDAO)).thenReturn(trade);
         when(tradeService.getTradeList()).thenReturn(ResponseEntity.status(HttpStatus.OK).body(tradeList));
         ResultActions result = this.mockMvc.perform(MockMvcRequestBuilders
                         .get(TRADE_URI))
@@ -119,7 +100,6 @@ public class TradeControllerTest {
     @Test
     public void getTradeByIdTest_WhenTradeExist() throws Exception{
         when(tradeService.getTradeById(1L)).thenReturn(ResponseEntity.status(HttpStatus.OK).body(trade));
-        when(tradeRepository.findById(1L)).thenReturn(Optional.of(tradeDAO));
         ResultActions result = this.mockMvc.perform(MockMvcRequestBuilders
                         .get(TRADE_URI +  "/" + 1L))
                 .andExpect(status().isOk())
@@ -132,7 +112,6 @@ public class TradeControllerTest {
     @Test
     public void getTradeByIdTest_WhenTradeNotExist() throws Exception{
         when(tradeService.getTradeById(1L)).thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(null));
-        when(tradeRepository.findById(1L)).thenReturn(Optional.empty());
         ResultActions result = this.mockMvc.perform(MockMvcRequestBuilders
                         .get(TRADE_URI +  "/" + 1L))
                 .andExpect(status().isNotFound());
